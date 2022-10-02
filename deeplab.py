@@ -1,3 +1,4 @@
+from cmath import e
 import os
 import cv2
 import numpy as np
@@ -46,7 +47,7 @@ class DeepLabModel(object):
         #We resize the mask to match the original image
         mask = cv2.resize(mask, image.shape[:2][::-1])[:, :, np.newaxis]
         #We get the image size
-        x0, y0, c0 = image.shapeç
+        x0, y0, c0 = image.shape
         #If the query is "bokeh" we blur the background, if we get a different query we crawl google for an image
         if query != 'bokeh':
             #We create a folder to download the image. We need try-except if the folder already exists
@@ -54,21 +55,26 @@ class DeepLabModel(object):
                 os.mkdir(query)
             except:
                 pass
-            #We run the crawler and download 1 image: https://pypi.org/project/icrawler/
-            google_crawler = GoogleImageCrawler(storage={'root_dir': f'/tmp/{query}'})
-            google_crawler.crawl(keyword=query, max_num=1)
-            #We load the saved image
-            background = cv2.imread(f'/tmp/{query}/000001.jpg')
-            #We get the background size
-            x, y, c = background.shape
-            #We resize the background in order to match the original image but keeping aspect ratio
-            new_x = x * y0 / y
-            new_y = y * x0 / x
-            if new_x > x0:
-                new_y = y0
-            else:
-                new_x = x0
-            background = cv2.resize(background, (int(new_y), int(new_x)))[:x0, :y0]
+            try:
+                #We run the crawler and download 1 image: https://pypi.org/project/icrawler/
+                google_crawler = GoogleImageCrawler(storage={'root_dir': f'/tmp/{query}'})
+                google_crawler.crawl(keyword=query, max_num=1)
+                #We load the saved image
+                background = cv2.imread(f'/tmp/{query}/000001.jpg')
+                #We get the background size
+                x, y, c = background.shape
+                #We resize the background in order to match the original image but keeping aspect ratio
+                new_x = x * y0 / y
+                new_y = y * x0 / x
+                if new_x > x0:
+                    new_y = y0
+                else:
+                    new_x = x0
+                background = cv2.resize(background, (int(new_y), int(new_x)))[:x0, :y0]
+            except BaseException as err:
+                print(f"Unexpected {err=}, {type(err)=}")
+                print(f"Using bokeh instead...")
+                background = cv2.blur(image.copy(), (x0 // 10, y0 // 10))
         else:
             #The background should be the same image but blurred. We blur the image
             background = cv2.blur(image.copy(), (x0 // 10, y0 // 10))
